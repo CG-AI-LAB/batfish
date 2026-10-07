@@ -236,6 +236,8 @@ import org.batfish.topology.TopologyProviderImpl;
 import org.batfish.vendor.ConversionContext;
 import org.batfish.vendor.VendorConfiguration;
 import org.batfish.vendor.check_point_management.CheckpointManagementConfiguration;
+import org.batfish.vendor.cisco_aci.representation.AciConfiguration;
+import org.batfish.vendor.cisco_aci.representation.AciParser;
 import org.batfish.version.BatfishVersion;
 
 /** This class encapsulates the main control logic for Batfish. */
@@ -2226,6 +2228,39 @@ public class Batfish extends PluginConsumer implements IBatfish {
     return found;
   }
 
+  /** Returns {@code true} iff Cisco ACI fabric data is found. */
+  private boolean serializeAciConfigs(
+      NetworkSnapshot snapshot, ParseVendorConfigurationAnswerElement pvcae) {
+    Map<String, String> aciData;
+    try (Stream<String> keys = _storage.listInputAciConfigsKeys(snapshot)) {
+      aciData = readAllInputObjects(keys, snapshot);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    if (aciData.isEmpty()) {
+      return false;
+    }
+    _logger.info("\n*** READING CISCO ACI CONFIGS ***\n");
+    Map<String, AciConfiguration> fabrics = AciParser.parseFabrics(aciData, pvcae);
+    if (fabrics.isEmpty()) {
+      return false;
+    }
+
+    _logger.info("\n*** SERIALIZING CISCO ACI CONFIGURATION STRUCTURES ***\n");
+    _logger.resetTimer();
+    // Vendor configurations are stored flat, so the key cannot contain the folder separator.
+    ImmutableMap.Builder<String, VendorConfiguration> byKey = ImmutableMap.builder();
+    fabrics.forEach(
+        (fabric, config) -> byKey.put(BfConsts.RELPATH_ACI_CONFIGS_DIR + "~" + fabric, config));
+    try {
+      _storage.storeVendorConfigurations(byKey.build(), snapshot);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    _logger.printElapsedTime();
+    return true;
+  }
+
   private void serializeConversionContext(
       NetworkSnapshot snapshot, ParseVendorConfigurationAnswerElement pvcae) {
     ConversionContext conversionContext = new ConversionContext();
@@ -2871,6 +2906,11 @@ public class Batfish extends PluginConsumer implements IBatfish {
 
     // look for Azure configs in the 'azure_configs/' subfolder of the upload
     if (serializeAzureConfigs(snapshot, answerElement)) {
+      configsFound = true;
+    }
+
+    // look for Cisco ACI fabrics in the 'aci_configs/' subfolder of the upload
+    if (serializeAciConfigs(snapshot, answerElement)) {
       configsFound = true;
     }
 

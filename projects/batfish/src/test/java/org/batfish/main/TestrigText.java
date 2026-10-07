@@ -53,6 +53,7 @@ public class TestrigText {
       }
     }
 
+    private Map<String, byte[]> _aciBytes;
     private Map<String, byte[]> _awsBytes;
     private Map<String, byte[]> _azureBytes;
     private Map<String, byte[]> _bgpTablesBytes;
@@ -70,6 +71,7 @@ public class TestrigText {
 
     public TestrigText build() {
       TestrigText testrigText = new TestrigText();
+      testrigText.setAciBytes(_aciBytes);
       testrigText.setAwsBytes(_awsBytes);
       testrigText.setAzureBytes(_azureBytes);
       testrigText.setBgpTablesBytes(_bgpTablesBytes);
@@ -85,6 +87,25 @@ public class TestrigText {
       testrigText.setRuntimeDataBytes(_runtimeDataBytes);
       testrigText.setSonicConfigBytes(_sonicConfigBytes);
       return testrigText;
+    }
+
+    /**
+     * Sets Cisco ACI fabric files. Keys are paths relative to {@code aci_configs/}, normally {@code
+     * <fabric>/<file>}.
+     */
+    public Builder setAciBytes(Map<String, byte[]> aciBytes) {
+      _aciBytes = aciBytes;
+      return this;
+    }
+
+    /**
+     * Reads Cisco ACI fabric files from {@code <testrigResourcePrefix>/aci_configs/}. Filenames are
+     * relative to that folder, normally {@code <fabric>/<file>}.
+     */
+    public Builder setAciFiles(String testrigResourcePrefix, Iterable<String> filenames) {
+      _aciBytes =
+          readTestrigResources(testrigResourcePrefix, BfConsts.RELPATH_ACI_CONFIGS_DIR, filenames);
+      return this;
     }
 
     public Builder setAwsBytes(Map<String, byte[]> awsText) {
@@ -360,6 +381,7 @@ public class TestrigText {
     return new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
   }
 
+  private Map<String, byte[]> _aciBytes;
   private Map<String, byte[]> _awsBytes;
   private Map<String, byte[]> _azureBytes;
   private Map<String, byte[]> _bgpTablesBytes;
@@ -374,6 +396,10 @@ public class TestrigText {
   private Map<String, byte[]> _routingTablesBytes;
   private byte[] _runtimeDataBytes;
   private Map<String, byte[]> _sonicConfigBytes;
+
+  public Map<String, byte[]> getAciBytes() {
+    return _aciBytes;
+  }
 
   public Map<String, byte[]> getAwsBytes() {
     return _awsBytes;
@@ -429,6 +455,10 @@ public class TestrigText {
 
   public Map<String, byte[]> getSonicConfigBytes() {
     return _sonicConfigBytes;
+  }
+
+  public void setAciBytes(Map<String, byte[]> aciBytes) {
+    _aciBytes = aciBytes;
   }
 
   public void setAwsBytes(Map<String, byte[]> awsBytes) {

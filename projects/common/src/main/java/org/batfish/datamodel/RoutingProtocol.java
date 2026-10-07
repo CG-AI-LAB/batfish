@@ -85,6 +85,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -126,6 +127,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case CUMULUS_CONCATENATED:
           case CUMULUS_NCLU:
@@ -174,6 +176,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
             return 90;
           case EMPTY:
@@ -214,6 +217,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
             return 170;
           case EMPTY:
@@ -255,6 +259,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case CUMULUS_CONCATENATED:
           case CUMULUS_NCLU:
@@ -301,6 +306,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -343,6 +349,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -385,6 +392,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -427,6 +435,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -474,6 +483,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -517,6 +527,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -560,6 +571,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -603,6 +615,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -645,6 +658,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -687,6 +701,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -747,6 +762,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
           case FORCE10:
           case FOUNDRY:
@@ -792,6 +808,7 @@ public enum RoutingProtocol {
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
+          case CISCO_ACI:
           case CISCO_NX:
             return 5;
           case EMPTY:

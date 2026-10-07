@@ -942,6 +942,15 @@ public interface StorageProvider {
   Stream<String> listInputAzureSingleAccountKeys(NetworkSnapshot snapshot) throws IOException;
 
   /**
+   * Returns a list of snapshot input object keys corresponding to Cisco ACI fabric (APIC) data.
+   *
+   * @throws IOException if there is an error
+   */
+  @MustBeClosed
+  @Nonnull
+  Stream<String> listInputAciConfigsKeys(NetworkSnapshot snapshot) throws IOException;
+
+  /**
    * Run implementation-specific garbage collection.
    *
    * <p>Expunge stored data for networks and snapshot that have been deleted by the users. An

@@ -1,0 +1,979 @@
+{
+  "totalCount": "1",
+  "imdata": [
+    {
+      "polUni": {
+        "attributes": {
+          "dn": "uni",
+          "name": ""
+        },
+        "children": [
+          {
+            "fvTenant": {
+              "attributes": {
+                "name": "prod"
+              },
+              "children": [
+                {
+                  "fvCtx": {
+                    "attributes": {
+                      "name": "main",
+                      "pcEnfPref": "enforced",
+                      "scope": "2490368",
+                      "seg": "2490368",
+                      "pcTag": "49153"
+                    }
+                  }
+                },
+                {
+                  "fvBD": {
+                    "attributes": {
+                      "name": "web-bd",
+                      "seg": "16351140",
+                      "bcastP": "225.1.156.240",
+                      "unicastRoute": "yes",
+                      "pcTag": "49154"
+                    },
+                    "children": [
+                      {
+                        "fvRsCtx": {
+                          "attributes": {
+                            "tnFvCtxName": "main"
+                          }
+                        }
+                      },
+                      {
+                        "fvSubnet": {
+                          "attributes": {
+                            "ip": "10.1.1.1/24",
+                            "scope": "public",
+                            "preferred": "no",
+                            "ctrl": "nd"
+                          }
+                        }
+                      },
+                      {
+                        "fvRsBDToOut": {
+                          "attributes": {
+                            "tnL3extOutName": "wan"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "fvBD": {
+                    "attributes": {
+                      "name": "app-bd",
+                      "seg": "16351141",
+                      "bcastP": "225.1.156.241",
+                      "unicastRoute": "yes"
+                    },
+                    "children": [
+                      {
+                        "fvRsCtx": {
+                          "attributes": {
+                            "tnFvCtxName": "main"
+                          }
+                        }
+                      },
+                      {
+                        "fvSubnet": {
+                          "attributes": {
+                            "ip": "10.1.2.1/24",
+                            "scope": "private"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "fvBD": {
+                    "attributes": {
+                      "name": "db-bd",
+                      "seg": "16351142",
+                      "bcastP": "225.1.156.242",
+                      "unicastRoute": "yes"
+                    },
+                    "children": [
+                      {
+                        "fvRsCtx": {
+                          "attributes": {
+                            "tnFvCtxName": "main"
+                          }
+                        }
+                      },
+                      {
+                        "fvSubnet": {
+                          "attributes": {
+                            "ip": "10.1.3.1/24",
+                            "scope": "private"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "fvAp": {
+                    "attributes": {
+                      "name": "shop"
+                    },
+                    "children": [
+                      {
+                        "fvAEPg": {
+                          "attributes": {
+                            "name": "web",
+                            "pcEnfPref": "unenforced",
+                            "pcTag": "32770"
+                          },
+                          "children": [
+                            {
+                              "fvRsBd": {
+                                "attributes": {
+                                  "tnFvBDName": "web-bd"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsPathAtt": {
+                                "attributes": {
+                                  "tDn": "topology/pod-1/paths-101/pathep-[eth1/1]",
+                                  "encap": "vlan-100",
+                                  "mode": "regular"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsCons": {
+                                "attributes": {
+                                  "tnVzBrCPName": "web-to-app"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsProv": {
+                                "attributes": {
+                                  "tnVzBrCPName": "http-in"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "fvAEPg": {
+                          "attributes": {
+                            "name": "app",
+                            "pcTag": "32771"
+                          },
+                          "children": [
+                            {
+                              "fvRsBd": {
+                                "attributes": {
+                                  "tnFvBDName": "app-bd"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsPathAtt": {
+                                "attributes": {
+                                  "tDn": "topology/pod-1/paths-102/pathep-[eth1/2]",
+                                  "encap": "vlan-200",
+                                  "mode": "untagged"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsProv": {
+                                "attributes": {
+                                  "tnVzBrCPName": "web-to-app"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsCons": {
+                                "attributes": {
+                                  "tnVzBrCPName": "app-to-db"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "fvAEPg": {
+                          "attributes": {
+                            "name": "db",
+                            "pcTag": "32772"
+                          },
+                          "children": [
+                            {
+                              "fvRsBd": {
+                                "attributes": {
+                                  "tnFvBDName": "db-bd"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsPathAtt": {
+                                "attributes": {
+                                  "tDn": "topology/pod-1/protpaths-101-102/pathep-[db-vpc]",
+                                  "encap": "vlan-300",
+                                  "mode": "regular"
+                                }
+                              }
+                            },
+                            {
+                              "fvRsProv": {
+                                "attributes": {
+                                  "tnVzBrCPName": "app-to-db"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzBrCP": {
+                    "attributes": {
+                      "name": "web-to-app",
+                      "scope": "context"
+                    },
+                    "children": [
+                      {
+                        "vzSubj": {
+                          "attributes": {
+                            "name": "app-traffic",
+                            "revFltPorts": "yes"
+                          },
+                          "children": [
+                            {
+                              "vzRsSubjFiltAtt": {
+                                "attributes": {
+                                  "tnVzFilterName": "tcp-8080",
+                                  "action": "permit",
+                                  "priorityOverride": "default"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzBrCP": {
+                    "attributes": {
+                      "name": "http-in",
+                      "scope": "context"
+                    },
+                    "children": [
+                      {
+                        "vzSubj": {
+                          "attributes": {
+                            "name": "web",
+                            "revFltPorts": "yes"
+                          },
+                          "children": [
+                            {
+                              "vzRsSubjFiltAtt": {
+                                "attributes": {
+                                  "tnVzFilterName": "http",
+                                  "action": "permit"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzBrCP": {
+                    "attributes": {
+                      "name": "app-to-db",
+                      "scope": "context"
+                    },
+                    "children": [
+                      {
+                        "vzSubj": {
+                          "attributes": {
+                            "name": "sql",
+                            "revFltPorts": "yes"
+                          },
+                          "children": [
+                            {
+                              "vzRsSubjFiltAtt": {
+                                "attributes": {
+                                  "tnVzFilterName": "sql",
+                                  "action": "permit"
+                                }
+                              }
+                            },
+                            {
+                              "vzRsSubjFiltAtt": {
+                                "attributes": {
+                                  "tnVzFilterName": "sql-admin",
+                                  "action": "deny"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzFilter": {
+                    "attributes": {
+                      "name": "tcp-8080"
+                    },
+                    "children": [
+                      {
+                        "vzEntry": {
+                          "attributes": {
+                            "name": "e1",
+                            "etherT": "ip",
+                            "prot": "tcp",
+                            "dFromPort": "8080",
+                            "dToPort": "8080",
+                            "sFromPort": "unspecified",
+                            "sToPort": "unspecified",
+                            "stateful": "no"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzFilter": {
+                    "attributes": {
+                      "name": "http"
+                    },
+                    "children": [
+                      {
+                        "vzEntry": {
+                          "attributes": {
+                            "name": "http",
+                            "etherT": "ip",
+                            "prot": "tcp",
+                            "dFromPort": "http",
+                            "dToPort": "http",
+                            "stateful": "yes"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzFilter": {
+                    "attributes": {
+                      "name": "sql"
+                    },
+                    "children": [
+                      {
+                        "vzEntry": {
+                          "attributes": {
+                            "name": "mysql",
+                            "etherT": "ipv4",
+                            "prot": "tcp",
+                            "dFromPort": "3306",
+                            "dToPort": "3306",
+                            "stateful": "yes"
+                          }
+                        }
+                      },
+                      {
+                        "vzEntry": {
+                          "attributes": {
+                            "name": "tcp-all",
+                            "etherT": "ip",
+                            "prot": "tcp"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vzFilter": {
+                    "attributes": {
+                      "name": "sql-admin"
+                    },
+                    "children": [
+                      {
+                        "vzEntry": {
+                          "attributes": {
+                            "name": "ssh",
+                            "etherT": "ip",
+                            "prot": "tcp",
+                            "dFromPort": "ssh",
+                            "dToPort": "ssh"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "l3extOut": {
+                    "attributes": {
+                      "name": "wan",
+                      "enforceRtctrl": "export"
+                    },
+                    "children": [
+                      {
+                        "l3extRsEctx": {
+                          "attributes": {
+                            "tnFvCtxName": "main"
+                          }
+                        }
+                      },
+                      {
+                        "bgpExtP": {
+                          "attributes": {
+                            "descr": ""
+                          }
+                        }
+                      },
+                      {
+                        "l3extLNodeP": {
+                          "attributes": {
+                            "name": "border"
+                          },
+                          "children": [
+                            {
+                              "l3extRsNodeL3OutAtt": {
+                                "attributes": {
+                                  "tDn": "topology/pod-1/node-103",
+                                  "rtrId": "1.1.1.103",
+                                  "rtrIdLoopBack": "yes"
+                                }
+                              }
+                            },
+                            {
+                              "l3extLIfP": {
+                                "attributes": {
+                                  "name": "uplink"
+                                },
+                                "children": [
+                                  {
+                                    "l3extRsPathL3OutAtt": {
+                                      "attributes": {
+                                        "tDn": "topology/pod-1/paths-103/pathep-[eth1/48]",
+                                        "ifInstT": "l3-port",
+                                        "addr": "192.168.100.1/30",
+                                        "encap": "unknown",
+                                        "mtu": "inherit"
+                                      },
+                                      "children": [
+                                        {
+                                          "bgpPeerP": {
+                                            "attributes": {
+                                              "addr": "192.168.100.2",
+                                              "ttl": "1",
+                                              "ctrl": "send-com",
+                                              "adminSt": "enabled"
+                                            },
+                                            "children": [
+                                              {
+                                                "bgpAsP": {
+                                                  "attributes": {
+                                                    "asn": "65100"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "l3extInstP": {
+                          "attributes": {
+                            "name": "internet",
+                            "pcTag": "16386"
+                          },
+                          "children": [
+                            {
+                              "l3extSubnet": {
+                                "attributes": {
+                                  "ip": "0.0.0.0/0",
+                                  "scope": "import-security",
+                                  "aggregate": ""
+                                }
+                              }
+                            },
+                            {
+                              "fvRsCons": {
+                                "attributes": {
+                                  "tnVzBrCPName": "http-in"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "infraInfra": {
+              "attributes": {
+                "name": "infra"
+              },
+              "children": [
+                {
+                  "infraNodeP": {
+                    "attributes": {
+                      "name": "leaf101-102"
+                    },
+                    "children": [
+                      {
+                        "infraLeafS": {
+                          "attributes": {
+                            "name": "leaves",
+                            "type": "range"
+                          },
+                          "children": [
+                            {
+                              "infraNodeBlk": {
+                                "attributes": {
+                                  "name": "blk",
+                                  "from_": "101",
+                                  "to_": "102"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "infraRsAccPortP": {
+                          "attributes": {
+                            "tDn": "uni/infra/accportprof-servers"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraNodeP": {
+                    "attributes": {
+                      "name": "leaf103"
+                    },
+                    "children": [
+                      {
+                        "infraLeafS": {
+                          "attributes": {
+                            "name": "border",
+                            "type": "range"
+                          },
+                          "children": [
+                            {
+                              "infraNodeBlk": {
+                                "attributes": {
+                                  "name": "blk",
+                                  "from_": "103",
+                                  "to_": "103"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "infraRsAccPortP": {
+                          "attributes": {
+                            "tDn": "uni/infra/accportprof-wan"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraAccPortP": {
+                    "attributes": {
+                      "name": "servers"
+                    },
+                    "children": [
+                      {
+                        "infraHPortS": {
+                          "attributes": {
+                            "name": "hosts",
+                            "type": "range"
+                          },
+                          "children": [
+                            {
+                              "infraPortBlk": {
+                                "attributes": {
+                                  "name": "blk",
+                                  "fromCard": "1",
+                                  "toCard": "1",
+                                  "fromPort": "1",
+                                  "toPort": "2"
+                                }
+                              }
+                            },
+                            {
+                              "infraRsAccBaseGrp": {
+                                "attributes": {
+                                  "tDn": "uni/infra/funcprof/accportgrp-server-pg"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "infraHPortS": {
+                          "attributes": {
+                            "name": "db",
+                            "type": "range"
+                          },
+                          "children": [
+                            {
+                              "infraPortBlk": {
+                                "attributes": {
+                                  "name": "blk",
+                                  "fromCard": "1",
+                                  "toCard": "1",
+                                  "fromPort": "10",
+                                  "toPort": "10"
+                                }
+                              }
+                            },
+                            {
+                              "infraRsAccBaseGrp": {
+                                "attributes": {
+                                  "tDn": "uni/infra/funcprof/accbundle-db-vpc"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraAccPortP": {
+                    "attributes": {
+                      "name": "wan"
+                    },
+                    "children": [
+                      {
+                        "infraHPortS": {
+                          "attributes": {
+                            "name": "uplink",
+                            "type": "range"
+                          },
+                          "children": [
+                            {
+                              "infraPortBlk": {
+                                "attributes": {
+                                  "name": "blk",
+                                  "fromCard": "1",
+                                  "toCard": "1",
+                                  "fromPort": "48",
+                                  "toPort": "48"
+                                }
+                              }
+                            },
+                            {
+                              "infraRsAccBaseGrp": {
+                                "attributes": {
+                                  "tDn": "uni/infra/funcprof/accportgrp-wan-pg"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraFuncP": {
+                    "attributes": {},
+                    "children": [
+                      {
+                        "infraAccPortGrp": {
+                          "attributes": {
+                            "name": "server-pg"
+                          },
+                          "children": [
+                            {
+                              "infraRsAttEntP": {
+                                "attributes": {
+                                  "tDn": "uni/infra/attentp-servers"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "infraAccPortGrp": {
+                          "attributes": {
+                            "name": "wan-pg"
+                          },
+                          "children": [
+                            {
+                              "infraRsAttEntP": {
+                                "attributes": {
+                                  "tDn": "uni/infra/attentp-wan"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "infraAccBndlGrp": {
+                          "attributes": {
+                            "name": "db-vpc",
+                            "lagT": "node"
+                          },
+                          "children": [
+                            {
+                              "infraRsAttEntP": {
+                                "attributes": {
+                                  "tDn": "uni/infra/attentp-servers"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraAttEntityP": {
+                    "attributes": {
+                      "name": "servers"
+                    },
+                    "children": [
+                      {
+                        "infraRsDomP": {
+                          "attributes": {
+                            "tDn": "uni/phys-servers"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "infraAttEntityP": {
+                    "attributes": {
+                      "name": "wan"
+                    },
+                    "children": [
+                      {
+                        "infraRsDomP": {
+                          "attributes": {
+                            "tDn": "uni/l3dom-wan"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "fabricInst": {
+              "attributes": {},
+              "children": [
+                {
+                  "bgpInstPol": {
+                    "attributes": {
+                      "name": "default"
+                    },
+                    "children": [
+                      {
+                        "bgpAsP": {
+                          "attributes": {
+                            "asn": "65001"
+                          }
+                        }
+                      },
+                      {
+                        "bgpRRP": {
+                          "attributes": {},
+                          "children": [
+                            {
+                              "bgpRRNodePEp": {
+                                "attributes": {
+                                  "id": "201",
+                                  "podId": "1"
+                                }
+                              }
+                            },
+                            {
+                              "bgpRRNodePEp": {
+                                "attributes": {
+                                  "id": "202",
+                                  "podId": "1"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "fabricProtPol": {
+                    "attributes": {
+                      "pairT": "explicit"
+                    },
+                    "children": [
+                      {
+                        "fabricExplicitGEp": {
+                          "attributes": {
+                            "name": "vpc-101-102",
+                            "id": "101"
+                          },
+                          "children": [
+                            {
+                              "fabricNodePEp": {
+                                "attributes": {
+                                  "id": "101",
+                                  "podId": "1"
+                                }
+                              }
+                            },
+                            {
+                              "fabricNodePEp": {
+                                "attributes": {
+                                  "id": "102",
+                                  "podId": "1"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "ctrlrInst": {
+              "attributes": {},
+              "children": [
+                {
+                  "fabricNodeIdentPol": {
+                    "attributes": {},
+                    "children": [
+                      {
+                        "fabricNodeIdentP": {
+                          "attributes": {
+                            "serial": "FDO1",
+                            "nodeId": "101",
+                            "name": "leaf-101",
+                            "role": "leaf",
+                            "podId": "1"
+                          }
+                        }
+                      },
+                      {
+                        "fabricNodeIdentP": {
+                          "attributes": {
+                            "serial": "FDO2",
+                            "nodeId": "102",
+                            "name": "leaf-102",
+                            "role": "leaf",
+                            "podId": "1"
+                          }
+                        }
+                      },
+                      {
+                        "fabricNodeIdentP": {
+                          "attributes": {
+                            "serial": "FDO3",
+                            "nodeId": "103",
+                            "name": "leaf-103",
+                            "role": "leaf",
+                            "podId": "1"
+                          }
+                        }
+                      },
+                      {
+                        "fabricNodeIdentP": {
+                          "attributes": {
+                            "serial": "FDO4",
+                            "nodeId": "201",
+                            "name": "spine-201",
+                            "role": "spine",
+                            "podId": "1"
+                          }
+                        }
+                      },
+                      {
+                        "fabricNodeIdentP": {
+                          "attributes": {
+                            "serial": "FDO5",
+                            "nodeId": "202",
+                            "name": "spine-202",
+                            "role": "spine",
+                            "podId": "1"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "fabricSetupPol": {
+                    "attributes": {},
+                    "children": [
+                      {
+                        "fabricSetupP": {
+                          "attributes": {
+                            "podId": "1",
+                            "tepPool": "10.0.0.0/16"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

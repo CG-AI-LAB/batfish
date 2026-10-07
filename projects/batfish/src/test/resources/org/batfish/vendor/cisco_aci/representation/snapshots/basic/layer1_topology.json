@@ -1,0 +1,12 @@
+{
+  "edges": [
+    {
+      "node1": {"hostname": "wan-rtr", "interfaceName": "Ethernet1/1"},
+      "node2": {"hostname": "leaf-103", "interfaceName": "eth1/48"}
+    },
+    {
+      "node1": {"hostname": "leaf-103", "interfaceName": "eth1/48"},
+      "node2": {"hostname": "wan-rtr", "interfaceName": "Ethernet1/1"}
+    }
+  ]
+}
