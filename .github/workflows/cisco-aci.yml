@@ -1,0 +1,45 @@
+name: Cisco ACI
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cisco_aci_tests:
+    name: Build and test cisco_aci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bazelisk cache
+        uses: actions/cache@v6
+        with:
+          path: "~/.cache/bazelisk"
+          key: ${{runner.os}}-bazelisk-${{ hashFiles('.bazelversion') }}
+      - name: Bazel cache
+        uses: actions/cache@v6
+        with:
+          path: "~/.cache/bazel"
+          key: ${{runner.os}}-bazel-aci-${{ hashFiles('.bazelversion', 'MODULE.bazel', 'maven_install.json') }}
+          restore-keys: |
+            ${{runner.os}}-bazel-aci-
+      - uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "25"
+      - name: Bazel build and test
+        # Tests tagged as needing network or external resources are skipped, and the
+        # sandbox denies network to the rest.
+        run: |
+          bazel test \
+            --test_output=errors \
+            --test_tag_filters=-requires-network,-external,-manual \
+            --sandbox_default_allow_network=false \
+            -- \
+            //projects/batfish/src/main/java/org/batfish/vendor/cisco_aci/... \
+            //projects/batfish/src/test/java/org/batfish/vendor/cisco_aci/...
