@@ -122,7 +122,8 @@ public class L3AdjacencyComputer {
       }
       Edges.connectInAccessMode(vlan, iface, domain);
     } else if (i.getSwitchportMode() == SwitchportMode.TRUNK) {
-      Edges.connectTrunk(iface, domain, i.getAllowedVlans(), i.getNativeVlan());
+      Edges.connectTrunk(
+          iface, domain, i.getAllowedVlans(), i.getNativeVlan(), i.getVlanTranslations());
     } else {
       LOGGER.warn("Surprised by L2 interface {}: unsure how to connect", nip);
     }

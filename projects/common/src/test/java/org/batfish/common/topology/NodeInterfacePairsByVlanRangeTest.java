@@ -127,4 +127,22 @@ public class NodeInterfacePairsByVlanRangeTest {
         byNode.get(otherNodeNi.getHostname()).getMap(),
         equalTo(ImmutableMap.of(range1, ImmutableSet.of(otherNodeNi.getInterface()))));
   }
+
+  @Test
+  public void testIsolate() {
+    _nodeInterfacePairsByVlanRange.add(Range.closed(1, 10), NI1);
+    _nodeInterfacePairsByVlanRange.isolate(5);
+    // Not mapped: stays unmapped
+    _nodeInterfacePairsByVlanRange.isolate(20);
+    assertThat(
+        _nodeInterfacePairsByVlanRange.asMap(),
+        equalTo(
+            ImmutableMap.of(
+                Range.closedOpen(1, 5),
+                ImmutableSet.of(NI1),
+                Range.closedOpen(5, 6),
+                ImmutableSet.of(NI1),
+                Range.closedOpen(6, 11),
+                ImmutableSet.of(NI1))));
+  }
 }

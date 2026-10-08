@@ -92,6 +92,7 @@ public final class Interface extends ComparableStructure<String> {
     private @Nullable TunnelConfiguration _tunnelConfig;
     private InterfaceType _type;
     private @Nullable Integer _vlan;
+    private @Nullable Map<Integer, Integer> _vlanTranslations;
     private Vrf _vrf;
     private SortedMap<Integer, VrrpGroup> _vrrpGroups;
     private @Nullable String _zoneName;
@@ -180,6 +181,9 @@ public final class Interface extends ComparableStructure<String> {
         iface.setInterfaceType(_type);
       }
       iface.setVlan(_vlan);
+      if (_vlanTranslations != null) {
+        iface.setVlanTranslations(_vlanTranslations);
+      }
 
       iface.setVrf(_vrf);
       iface.setVrrpGroups(_vrrpGroups);
@@ -495,6 +499,12 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
+    /** See {@link Interface#getVlanTranslations()}. */
+    public @Nonnull Builder setVlanTranslations(@Nullable Map<Integer, Integer> vlanTranslations) {
+      _vlanTranslations = vlanTranslations;
+      return this;
+    }
+
     public Builder setVrf(Vrf vrf) {
       _vrf = vrf;
       return this;
@@ -638,6 +648,7 @@ public final class Interface extends ComparableStructure<String> {
   private static final String PROP_SWITCHPORT_TRUNK_ENCAPSULATION = "switchportTrunkEncapsulation";
   private static final String PROP_TUNNEL_CONFIG = "tunnelConfig";
   private static final String PROP_VLAN = "vlan";
+  private static final String PROP_VLAN_TRANSLATIONS = "vlanTranslations";
   private static final String PROP_VRF = "vrf";
   private static final String PROP_VRRP_GROUPS = "vrrpGroups";
   private static final String PROP_ZONE = "zone";
@@ -769,6 +780,7 @@ public final class Interface extends ComparableStructure<String> {
   private SwitchportEncapsulationType _switchportTrunkEncapsulation;
   private @Nullable TunnelConfiguration _tunnelConfig;
   private Integer _vlan;
+  private @Nonnull SortedMap<Integer, Integer> _vlanTranslations;
   private Vrf _vrf;
   private transient String _vrfName;
   private SortedMap<Integer, VrrpGroup> _vrrpGroups;
@@ -788,6 +800,7 @@ public final class Interface extends ComparableStructure<String> {
     _addressMetadata = ImmutableSortedMap.of();
     _autoState = true;
     _allowedVlans = IntegerSpace.EMPTY;
+    _vlanTranslations = ImmutableSortedMap.of();
     _allAddresses = ImmutableSortedSet.of();
     _channelGroupMembers = ImmutableSortedSet.of();
     _declaredNames = ImmutableSortedSet.of();
@@ -881,6 +894,9 @@ public final class Interface extends ComparableStructure<String> {
       return false;
     }
     if (!Objects.equals(_nativeVlan, other._nativeVlan)) {
+      return false;
+    }
+    if (!_vlanTranslations.equals(other._vlanTranslations)) {
       return false;
     }
     if (!Objects.equals(_ospfSettings, other._ospfSettings)) {
@@ -1370,6 +1386,21 @@ public final class Interface extends ComparableStructure<String> {
     return _vlan;
   }
 
+  /**
+   * VLAN translations of a trunk switchport: the 802.1Q tag on the wire, mapped to the VLAN on this
+   * device that frames with that tag belong to. Each device VLAN is the translation of at most one
+   * tag.
+   *
+   * <p>{@link #getAllowedVlans()} and {@link #getNativeVlan()} name VLANs on the device. A
+   * translated tag carries its device VLAN in both directions, and a device VLAN that some tag
+   * translates to is carried only under that tag. A tag that is neither translated nor a
+   * translation carries the VLAN with the same number. Untagged frames belong to the native VLAN.
+   */
+  @JsonProperty(PROP_VLAN_TRANSLATIONS)
+  public @Nonnull SortedMap<Integer, Integer> getVlanTranslations() {
+    return _vlanTranslations;
+  }
+
   @JsonIgnore
   public Vrf getVrf() {
     return _vrf;
@@ -1719,6 +1750,25 @@ public final class Interface extends ComparableStructure<String> {
   @JsonProperty(PROP_VLAN)
   public void setVlan(@Nullable Integer vlan) {
     _vlan = vlan;
+  }
+
+  /**
+   * Sets the VLAN translations of a trunk switchport. See {@link #getVlanTranslations()}.
+   *
+   * @throws IllegalArgumentException if two tags translate to the same VLAN
+   */
+  @JsonProperty(PROP_VLAN_TRANSLATIONS)
+  public void setVlanTranslations(@Nullable Map<Integer, Integer> vlanTranslations) {
+    if (vlanTranslations == null || vlanTranslations.isEmpty()) {
+      _vlanTranslations = ImmutableSortedMap.of();
+      return;
+    }
+    checkArgument(
+        ImmutableSet.copyOf(vlanTranslations.values()).size() == vlanTranslations.size(),
+        "Two tags of interface %s translate to the same VLAN: %s",
+        getName(),
+        vlanTranslations);
+    _vlanTranslations = ImmutableSortedMap.copyOf(vlanTranslations);
   }
 
   @JsonIgnore

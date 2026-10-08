@@ -17,6 +17,7 @@ import com.google.common.graph.EndpointPair;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -87,16 +88,35 @@ public final class TopologyUtil {
         VLAN ranges are canonical and have been determined globally, so no key in node1Ranges can
         overlap with any key in node2Ranges unless they're the same range.
       */
+      TrunkTagging tagging1 = TrunkTagging.of(i1);
+      TrunkTagging tagging2 = TrunkTagging.of(i2);
+      Set<Integer> translated =
+          Sets.union(tagging1.getTranslatedTagsAndVlans(), tagging2.getTranslatedTagsAndVlans());
       Set<Range<Integer>> sharedRanges =
           Sets.intersection(node1Ranges.getMap().keySet(), node2Ranges.getMap().keySet()).stream()
               .filter(
                   r ->
                       node1Ranges.getMap().get(r).contains(l1Node1.getInterfaceName())
                           && node2Ranges.getMap().get(r).contains(l1Node2.getInterfaceName()))
+              // VLANs that either side translates are not tagged with their own number.
+              .filter(r -> translated.stream().noneMatch(r::contains))
               .collect(ImmutableSet.toImmutableSet());
       for (Range<Integer> sharedRange : sharedRanges) {
         // This frame will be tagged by i1 and we can directly check whether i2 allows.
         edges.accept(new Layer2Edge(l1Node1, sharedRange, l1Node2, sharedRange));
+      }
+      // A tag that either side translates may carry a different VLAN on each side. Translated tags
+      // and VLANs have ranges of their own (see computeNodeInterfacePairsByVlan).
+      for (int tag : translated) {
+        Optional<Integer> vlan1 = tagging1.receiveTagged(tag);
+        Optional<Integer> vlan2 = tagging2.receiveTagged(tag);
+        if (vlan1.isPresent() && vlan2.isPresent()) {
+          Range<Integer> range1 = node1Ranges.getRange(vlan1.get());
+          Range<Integer> range2 = node2Ranges.getRange(vlan2.get());
+          if (range1 != null && range2 != null) {
+            edges.accept(new Layer2Edge(l1Node1, range1, l1Node2, range2));
+          }
+        }
       }
       if (i1.getNativeVlan() != null && trunkWithNativeVlanAllowed(i2)) {
         // This frame will not be tagged by i1, and i2 accepts untagged frames.
@@ -111,15 +131,19 @@ public final class TopologyUtil {
     } else if (i1Tag != null) {
       // i1 is a tagged layer-3 interface, and the other side is a trunk. The only possible edge is
       // i2 receiving frames for a non-native allowed vlan.
-      if (!i1Tag.equals(i2.getNativeVlan()) && i2.getAllowedVlans().contains(i1Tag)) {
-        edges.accept(new Layer2Edge(l1Node1, null, l1Node2, node2Ranges.getRange(i1Tag)));
-      }
+      TrunkTagging.of(i2)
+          .receiveTagged(i1Tag)
+          .ifPresent(
+              vlan ->
+                  edges.accept(new Layer2Edge(l1Node1, null, l1Node2, node2Ranges.getRange(vlan))));
     } else if (i2Tag != null) {
       // i1 is a trunk, and the other side is a tagged layer-3 interface. The only possible edge is
       // i2 receiving frames for from a non-native allowed vlan of i1.
-      if (!i2Tag.equals(i1.getNativeVlan()) && i1.getAllowedVlans().contains(i2Tag)) {
-        edges.accept(new Layer2Edge(l1Node1, node1Ranges.getRange(i2Tag), l1Node2, null));
-      }
+      TrunkTagging.of(i1)
+          .receiveTagged(i2Tag)
+          .ifPresent(
+              vlan ->
+                  edges.accept(new Layer2Edge(l1Node1, node1Ranges.getRange(vlan), l1Node2, null)));
     } else if (trunkWithNativeVlanAllowed(i1)) {
       // i1 is a trunk, but the other side is not and does not use tags. The only edge that will
       // come up is i2 receiving untagged packets.
@@ -289,10 +313,12 @@ public final class TopologyUtil {
   private static @Nonnull NodeInterfacePairsByVlanRange computeNodeInterfacePairsByVlan(
       @Nonnull Map<String, Configuration> configs, Set<String> hostnames) {
     NodeInterfacePairsByVlanRange nisByVlan = NodeInterfacePairsByVlanRange.create();
+    Set<Integer> translated = new HashSet<>();
     for (String hostname : hostnames) {
       for (Interface i : configs.get(hostname).getActiveInterfaces().values()) {
         NodeInterfacePair ni = NodeInterfacePair.of(i);
         if (i.getSwitchportMode() == SwitchportMode.TRUNK) {
+          translated.addAll(TrunkTagging.of(i).getTranslatedTagsAndVlans());
           IntegerSpace allowedVlansNoNative =
               i.getAllowedVlans()
                   .difference(
@@ -312,6 +338,9 @@ public final class TopologyUtil {
         }
       }
     }
+    // A translated tag carries a different VLAN on each side of a link, so trunk edges need the
+    // tags and VLANs involved in their own ranges on every node.
+    translated.forEach(nisByVlan::isolate);
     return nisByVlan;
   }
 

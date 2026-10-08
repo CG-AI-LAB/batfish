@@ -56,6 +56,15 @@ class NodeInterfacePairsByVlanRange {
         (a, b) -> ImmutableSet.<NodeInterfacePair>builder().addAll(a).addAll(b).build());
   }
 
+  /**
+   * Gives {@code vlan} a range of its own wherever it is already mapped, without adding interfaces.
+   * Call after all interfaces are added.
+   */
+  public void isolate(int vlan) {
+    // A null value leaves unmapped parts unmapped; mapped parts are split and keep their value.
+    _ranges.merge(Range.closedOpen(vlan, vlan + 1), null, (a, b) -> a);
+  }
+
   /** Return the mapping of all ranges to sets of node-interface pairs as an unmodifiable map */
   public @Nonnull Map<Range<Integer>, Set<NodeInterfacePair>> asMap() {
     return _ranges.asMapOfRanges();
