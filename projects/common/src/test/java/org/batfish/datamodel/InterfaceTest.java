@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.testing.EqualsTester;
 import org.batfish.common.util.BatfishObjectMapper;
 import org.batfish.datamodel.Interface.Dependency;
@@ -550,6 +551,7 @@ public class InterfaceTest {
             .setType(InterfaceType.PHYSICAL)
             .setOspfSettings(OspfInterfaceSettings.defaultSettingsBuilder().build())
             .setHmm(true)
+            .setVlanTranslations(ImmutableMap.of(100, 10, 200, 20))
             .build();
 
     // test (de)serialization
@@ -565,8 +567,17 @@ public class InterfaceTest {
             .setName("ifaceName")
             .setType(InterfaceType.PHYSICAL)
             .setHmm(true)
+            .setVlanTranslations(ImmutableMap.of(100, 10, 200, 20))
             .build();
     assertEquals(obj, BatfishObjectMapper.clone(obj, Interface.class));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testVlanTranslationsRejectSharedVlan() {
+    TestInterface.builder()
+        .setName("ifaceName")
+        .setVlanTranslations(ImmutableMap.of(100, 10, 200, 10))
+        .build();
   }
 
   @Test

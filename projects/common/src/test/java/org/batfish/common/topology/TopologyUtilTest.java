@@ -1901,4 +1901,114 @@ public final class TopologyUtilTest {
     // missing remote node in configs
     assertFalse(isBorderToIspEdge(borderIspEdge, ImmutableMap.of(isp.getHostname(), isp)));
   }
+
+  /** Adds VLAN interface {@code name} for {@code vlan} to {@code c}. */
+  private void svi(Configuration c, Vrf vrf, String name, int vlan) {
+    Interface svi =
+        _ib.setOwner(c)
+            .setVrf(vrf)
+            .setName(name)
+            .setDependencies(ImmutableList.of())
+            .setEncapsulationVlan(null)
+            .setAdminUp(true)
+            .build();
+    svi.updateInterfaceType(InterfaceType.VLAN);
+    svi.setVlan(vlan);
+  }
+
+  /** Adds trunk switchport {@code name} to {@code c}. */
+  private void trunk(
+      Configuration c, Vrf vrf, String name, IntegerSpace allowed, Map<Integer, Integer> map) {
+    Interface trunk =
+        _ib.setOwner(c)
+            .setVrf(vrf)
+            .setName(name)
+            .setDependencies(ImmutableList.of())
+            .setEncapsulationVlan(null)
+            .setAdminUp(true)
+            .build();
+    trunk.setSwitchport(true);
+    trunk.setSwitchportMode(SwitchportMode.TRUNK);
+    trunk.setAllowedVlans(allowed);
+    trunk.setVlanTranslations(map);
+  }
+
+  @Test
+  public void testComputeLayer2TopologyVlanTranslation() {
+    // n1:t1 translates tag 100 to its VLAN 10 and carries VLANs 20 and 30 as is.
+    // n2:t2 allows every VLAN without translation, so VLAN ranges must be split around 10 and 100.
+    Configuration n1 = _cb.setHostname("n1").build();
+    Configuration n2 = _cb.setHostname("n2").build();
+    Vrf v1 = _vb.setOwner(n1).build();
+    Vrf v2 = _vb.setOwner(n2).build();
+    trunk(n1, v1, "t1", IntegerSpace.of(Range.closed(10, 30)), ImmutableMap.of(100, 10));
+    svi(n1, v1, "vlan10", 10);
+    svi(n1, v1, "vlan20", 20);
+    trunk(n2, v2, "t2", IntegerSpace.of(Range.closed(1, 4094)), ImmutableMap.of());
+    svi(n2, v2, "vlan10", 10);
+    svi(n2, v2, "vlan20", 20);
+    svi(n2, v2, "vlan100", 100);
+
+    Layer2Topology l2 =
+        computeLayer2Topology(
+            layer1Topology("n1", "t1", "n2", "t2"),
+            VxlanTopology.EMPTY,
+            ImmutableMap.of("n1", n1, "n2", n2));
+
+    // Tag 100 carries n1's VLAN 10 and n2's VLAN 100.
+    assertTrue(l2.inSameBroadcastDomain("n1", "vlan10", "n2", "vlan100"));
+    // n1 carries VLAN 10 only under tag 100, and drops frames tagged 10.
+    assertFalse(l2.inSameBroadcastDomain("n1", "vlan10", "n2", "vlan10"));
+    // Untranslated VLANs are carried as before.
+    assertTrue(l2.inSameBroadcastDomain("n1", "vlan20", "n2", "vlan20"));
+    assertFalse(l2.inSameBroadcastDomain("n1", "vlan20", "n2", "vlan100"));
+  }
+
+  @Test
+  public void testComputeLayer2TopologyVlanTranslationBothSides() {
+    // Each side translates tag 100 to a different VLAN of its own.
+    Configuration n1 = _cb.setHostname("n1").build();
+    Configuration n2 = _cb.setHostname("n2").build();
+    Vrf v1 = _vb.setOwner(n1).build();
+    Vrf v2 = _vb.setOwner(n2).build();
+    trunk(n1, v1, "t1", IntegerSpace.of(10), ImmutableMap.of(100, 10));
+    svi(n1, v1, "vlan10", 10);
+    trunk(n2, v2, "t2", IntegerSpace.of(Range.closed(7, 10)), ImmutableMap.of(100, 7));
+    svi(n2, v2, "vlan7", 7);
+    svi(n2, v2, "vlan10", 10);
+
+    Layer2Topology l2 =
+        computeLayer2Topology(
+            layer1Topology("n1", "t1", "n2", "t2"),
+            VxlanTopology.EMPTY,
+            ImmutableMap.of("n1", n1, "n2", n2));
+
+    assertTrue(l2.inSameBroadcastDomain("n1", "vlan10", "n2", "vlan7"));
+    assertFalse(l2.inSameBroadcastDomain("n1", "vlan10", "n2", "vlan10"));
+  }
+
+  @Test
+  public void testComputeLayer2TopologyTaggedLayer3ToTranslatingTrunk() {
+    // n1:sub100 and n1:sub10 are tagged subinterfaces of n1:eth; n2:t2 translates tag 100 to 10.
+    Configuration n1 = _cb.setHostname("n1").build();
+    Configuration n2 = _cb.setHostname("n2").build();
+    Vrf v1 = _vb.setOwner(n1).build();
+    Vrf v2 = _vb.setOwner(n2).build();
+    _ib.setOwner(n1).setVrf(v1).setAdminUp(true).setEncapsulationVlan(null);
+    _ib.setName("eth").setDependencies(ImmutableList.of()).build();
+    _ib.setDependencies(ImmutableList.of(new Dependency("eth", DependencyType.BIND)));
+    _ib.setName("sub100").setEncapsulationVlan(100).build();
+    _ib.setName("sub10").setEncapsulationVlan(10).build();
+    trunk(n2, v2, "t2", IntegerSpace.of(10), ImmutableMap.of(100, 10));
+    svi(n2, v2, "vlan10", 10);
+
+    Layer2Topology l2 =
+        computeLayer2Topology(
+            layer1Topology("n1", "eth", "n2", "t2"),
+            VxlanTopology.EMPTY,
+            ImmutableMap.of("n1", n1, "n2", n2));
+
+    assertTrue(l2.inSameBroadcastDomain("n1", "sub100", "n2", "vlan10"));
+    assertFalse(l2.inSameBroadcastDomain("n1", "sub10", "n2", "vlan10"));
+  }
 }

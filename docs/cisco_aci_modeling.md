@@ -57,7 +57,7 @@ APIC_PASSWORD=... python3 tools/export_aci_fabric.py \
 | MP-BGP route distribution | iBGP EVPN sessions from each leaf to each route-reflector spine (`bgpRRNodePEp`), with EVPN type-5 routes standing in for VPNv4 |
 | Tenant VRF (`fvCtx`) | VRF `<tenant>:<vrf>` with an L3 VNI (`fvCtx.scope`) on each leaf where it is deployed |
 | Bridge domain (`fvBD`) | An L2 VNI (`fvBD.seg`, flooding on the `bcastP` group) and an anycast-gateway SVI `vlan<N>` with the BD's subnets on each leaf where an EPG of the BD is deployed |
-| EPG static binding (`fvRsPathAtt`) and AAEP binding (`infraRsFuncToEpg`) | Trunk or access switchport on the port, port-channel or vPC |
+| EPG static binding (`fvRsPathAtt`) and AAEP binding (`infraRsFuncToEpg`) | Trunk or access switchport on the port, port-channel or vPC. A bridge domain's VLAN on a leaf is its lowest free encap there, else an internal VLAN counting down from 3967; each port translates the bridge domain's other encaps to it |
 | Access policies | Physical ports, port-channels and vPC aggregates from leaf and interface profiles |
 | Endpoint (`fvCEp`) | A host route on the leaf where the endpoint was learned, distributed to the other leaves |
 | L3Out | Routed ports, subinterfaces and SVIs (vPC side A/B addresses); router-ID loopbacks; static routes; BGP and OSPF in the tenant VRF |
@@ -116,8 +116,8 @@ response is a single line.
 - Multi-Pod, Multi-Site and remote leaves are not modeled.
 - Service graphs and policy-based redirect are not modeled.
 - Shared-services (inter-VRF) contracts and route leaking are not modeled.
-- A bridge domain with several encap VLANs on one leaf bridges only one of them to its gateway,
-  until per-port VLAN translation is added to the vendor-independent model; conversion warns.
+- A port carries each bridge domain under one encap. A second encap of the same bridge domain on
+  that port is ignored, with a warning.
 - Bridged traffic between EPGs of one bridge domain is filtered only when traced from the bridge
   domain's SVI, because Batfish has no layer-2 forwarding step.
 - FEX ports are ignored with a warning.

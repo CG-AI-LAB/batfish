@@ -1,5 +1,7 @@
 package org.batfish.common.topology.broadcast;
 
+import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import javax.annotation.Nullable;
 import org.batfish.common.topology.broadcast.DomainToL2Interface.AccessMode;
 import org.batfish.common.topology.broadcast.DomainToL2Interface.Trunk;
@@ -34,7 +36,16 @@ public final class Edges {
       DeviceBroadcastDomain sw,
       IntegerSpace allowedVlans,
       @Nullable Integer nativeVlan) {
-    Trunk trunk = new Trunk(allowedVlans, nativeVlan);
+    connectTrunk(phys, sw, allowedVlans, nativeVlan, ImmutableMap.of());
+  }
+
+  public static void connectTrunk(
+      PhysicalInterface phys,
+      DeviceBroadcastDomain sw,
+      IntegerSpace allowedVlans,
+      @Nullable Integer nativeVlan,
+      Map<Integer, Integer> vlanTranslations) {
+    Trunk trunk = new Trunk(allowedVlans, nativeVlan, vlanTranslations);
     phys.deliverToSwitch(sw, trunk::receiveTag);
     sw.transmitOutPhysical(phys, trunk::sendFromVlan);
   }

@@ -1,8 +1,10 @@
 package org.batfish.common.topology.broadcast;
 
-import java.util.Objects;
+import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.batfish.common.topology.TrunkTagging;
 import org.batfish.datamodel.IntegerSpace;
 
 /** Models {@link DeviceBroadcastDomain} and {@link PhysicalInterface} connections */
@@ -53,24 +55,30 @@ public interface DomainToL2Interface {
   /**
    * A switchport in trunk mode will accept untagged frames in the native vlan (if present), will
    * accept tagged frames in any allowed vlan. The reverse is true: native vlan will be sent
-   * untagged, all tagged frames in an allowed vlan will also be accepted.
+   * untagged, all tagged frames in an allowed vlan will also be accepted. Tags are mapped to VLANs
+   * as {@link TrunkTagging} describes, honoring VLAN translations.
    */
   class Trunk implements DomainToL2Interface {
     public Trunk(IntegerSpace allowedVlans, @Nullable Integer nativeVlanId) {
+      this(allowedVlans, nativeVlanId, ImmutableMap.of());
+    }
+
+    public Trunk(
+        IntegerSpace allowedVlans,
+        @Nullable Integer nativeVlanId,
+        Map<Integer, Integer> vlanTranslations) {
       _allowedVlans = allowedVlans;
       _nativeVlanId = nativeVlanId;
+      _tagging = new TrunkTagging(allowedVlans, nativeVlanId, vlanTranslations);
     }
 
     @Override
     public Optional<Integer> receiveTag(EthernetTag tag) {
-      if (tag.hasTag() && Objects.equals(tag.getTag(), _nativeVlanId)) {
-        // Trunks reject frames tagged with native VLAN.
-        return Optional.empty();
+      if (tag.hasTag()) {
+        return _tagging.receiveTagged(tag.getTag());
       }
-
-      // Present if 1) tag is present and allowed, or 2) no tag, native vlan is allowed.
-      Integer effectiveVlan = tag.hasTag() ? (Integer) tag.getTag() : _nativeVlanId;
-      return Optional.ofNullable(effectiveVlan).filter(_allowedVlans::contains);
+      // Untagged frames are in the native vlan, if it is allowed.
+      return Optional.ofNullable(_nativeVlanId).filter(_allowedVlans::contains);
     }
 
     @Override
@@ -81,10 +89,11 @@ public interface DomainToL2Interface {
       if (_nativeVlanId != null && _nativeVlanId == vlan) {
         return Optional.of(EthernetTag.untagged());
       }
-      return Optional.of(EthernetTag.tagged(vlan));
+      return _tagging.sendTagged(vlan).map(EthernetTag::tagged);
     }
 
     private final @Nullable Integer _nativeVlanId;
     private final IntegerSpace _allowedVlans;
+    private final TrunkTagging _tagging;
   }
 }

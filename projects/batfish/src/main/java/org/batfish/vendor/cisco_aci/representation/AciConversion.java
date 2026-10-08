@@ -6,6 +6,8 @@ import static org.batfish.datamodel.bgp.NextHopIpTieBreaker.HIGHEST_NEXT_HOP_IP;
 import static org.batfish.datamodel.bgp.NextHopIpTieBreaker.LOWEST_NEXT_HOP_IP;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -919,21 +921,12 @@ final class AciConversion {
       n._bindings.values().forEach(bs -> bs.forEach(b -> encaps.get(b._bd).add(b._encap)));
       for (Map.Entry<BridgeDomain, SortedSet<Integer>> e : encaps.entrySet()) {
         BridgeDomain bd = e.getKey();
+        // The BD's VLAN on the leaf is its lowest free encap, else an internal VLAN, as on the
+        // switch. Ports translate the BD's other encaps to it (see createSwitchports).
         Integer vlan =
             e.getValue().stream().filter(v -> !n._usedVlans.contains(v)).findFirst().orElse(null);
         if (vlan == null) {
           vlan = allocateInternalVlan(n);
-        }
-        if (e.getValue().size() > 1) {
-          _w.redFlagf(
-              "Bridge domain %s uses encaps %s on %s; only VLAN %d is bridged to its gateway"
-                  + " until per-port VLAN translation is modeled",
-              bd.getDn(), e.getValue(), n._hostname, vlan);
-        } else if (!e.getValue().isEmpty() && !e.getValue().contains(vlan)) {
-          _w.redFlagf(
-              "Encap VLAN %s of bridge domain %s on %s is already used; its ports are not"
-                  + " bridged to the gateway",
-              e.getValue(), bd.getDn(), n._hostname);
         }
         n._usedVlans.add(vlan);
         n._bdVlans.put(bd, vlan);
@@ -1007,13 +1000,39 @@ final class AciConversion {
               name, n._hostname);
           continue;
         }
-        Set<Integer> allowed = new TreeSet<>(sviEncaps);
+        // Device VLANs on the port, and the VLAN each tag on the wire carries
+        Set<Integer> allowed = new TreeSet<>();
+        BiMap<Integer, Integer> vlansByTag = HashBiMap.create();
+        for (int encap : sviEncaps) {
+          allowed.add(encap);
+          vlansByTag.put(encap, encap);
+        }
         Integer untagged = null;
         for (EpgBinding b : bindings) {
-          allowed.add(b._encap);
+          int vlan = n._bdVlans.get(b._bd);
           if (b._mode != StaticPath.Mode.TAGGED) {
-            untagged = b._encap;
+            untagged = vlan;
+            allowed.add(vlan);
+            continue;
           }
+          Integer tagVlan = vlansByTag.get(b._encap);
+          if (tagVlan != null && tagVlan != vlan) {
+            _w.redFlagf(
+                "EPG %s uses encap VLAN %d on %s %s, which the port already uses for another"
+                    + " VLAN; ignoring the binding",
+                b._epg.getDn(), b._encap, n._hostname, name);
+            continue;
+          }
+          Integer vlanTag = vlansByTag.inverse().get(vlan);
+          if (vlanTag != null && vlanTag != b._encap) {
+            _w.redFlagf(
+                "EPG %s uses encap VLAN %d on %s %s, which already carries bridge domain %s under"
+                    + " encap VLAN %d; ignoring the binding",
+                b._epg.getDn(), b._encap, n._hostname, name, b._bd.getDn(), vlanTag);
+            continue;
+          }
+          allowed.add(vlan);
+          vlansByTag.put(b._encap, vlan);
         }
         iface.setSwitchport(true);
         boolean onlyAccess =
@@ -1031,6 +1050,11 @@ final class AciConversion {
                       .map(v -> new SubRange(v, v))
                       .collect(ImmutableList.toImmutableList())));
           iface.setNativeVlan(untagged);
+          // Encaps other than their bridge domain's VLAN on the leaf are translated to it.
+          iface.setVlanTranslations(
+              vlansByTag.entrySet().stream()
+                  .filter(t -> !t.getKey().equals(t.getValue()))
+                  .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue)));
         }
         // Members of an aggregate inherit its switching; Batfish reads it from the aggregate.
       }
