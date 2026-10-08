@@ -1,6 +1,5 @@
 package org.batfish.vendor.cisco_aci.representation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -14,7 +13,6 @@ import java.util.TreeMap;
 import javax.annotation.Nonnull;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Warning;
-import org.batfish.common.util.BatfishObjectMapper;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.answers.ParseStatus;
 import org.batfish.datamodel.answers.ParseVendorConfigurationAnswerElement;
@@ -66,8 +64,7 @@ public final class AciParser {
       String filename = file.getKey();
       pvcae.getFileFormats().put(filename, ConfigurationFormat.CISCO_ACI);
       try {
-        JsonNode json = BatfishObjectMapper.mapper().readTree(file.getValue());
-        parsed.add(new FileRoots(filename, AciMoReader.read(json)));
+        parsed.add(new FileRoots(filename, AciMoReader.read(file.getValue())));
         pvcae.getParseStatus().put(filename, ParseStatus.PASSED);
       } catch (IOException | IllegalArgumentException e) {
         pvcae.addRedFlagWarning(
@@ -83,6 +80,7 @@ public final class AciParser {
         AciModelExtractor extractor =
             new AciModelExtractor(
                 config,
+                file._filename,
                 message -> {
                   pvcae.addUnimplementedWarning(file._filename, new Warning(message, WARNING_TAG));
                   pvcae.getParseStatus().put(file._filename, ParseStatus.PARTIALLY_UNRECOGNIZED);
@@ -93,6 +91,11 @@ public final class AciParser {
           }
         }
       }
+    }
+    config.getStructures().resolveReferences();
+    // Questions about structures find a node's files through this map.
+    for (String hostname : config.getHostnames().values()) {
+      pvcae.getFileMap().putAll(hostname, files.keySet());
     }
     return config;
   }

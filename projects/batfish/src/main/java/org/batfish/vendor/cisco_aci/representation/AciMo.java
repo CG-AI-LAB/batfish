@@ -14,10 +14,17 @@ import javax.annotation.Nullable;
  */
 public final class AciMo {
 
-  public AciMo(String className, Map<String, String> attributes, List<AciMo> children) {
+  public AciMo(
+      String className,
+      Map<String, String> attributes,
+      List<AciMo> children,
+      int line,
+      int lastLine) {
     _className = className;
     _attributes = ImmutableMap.copyOf(attributes);
     _children = ImmutableList.copyOf(children);
+    _line = line;
+    _lastLine = lastLine;
   }
 
   /** The class name without a package separator, e.g. {@code fvTenant}. */
@@ -57,6 +64,16 @@ public final class AciMo {
     return _children.stream().filter(c -> c.getClassName().equals(className)).findFirst();
   }
 
+  /** The line of its source file where this object starts. */
+  public int getLine() {
+    return _line;
+  }
+
+  /** The line of its source file where this object, including its children, ends. */
+  public int getLastLine() {
+    return _lastLine;
+  }
+
   @Override
   public String toString() {
     return _className + _attributes;
@@ -65,4 +82,6 @@ public final class AciMo {
   private final @Nonnull String _className;
   private final @Nonnull Map<String, String> _attributes;
   private final @Nonnull List<AciMo> _children;
+  private final int _line;
+  private final int _lastLine;
 }

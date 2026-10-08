@@ -2,6 +2,7 @@ package org.batfish.vendor.cisco_aci.representation;
 
 import static org.batfish.datamodel.matchers.AbstractRouteDecoratorMatchers.hasNextHop;
 import static org.batfish.datamodel.matchers.AbstractRouteDecoratorMatchers.hasPrefix;
+import static org.batfish.datamodel.matchers.ConvertConfigurationAnswerElementMatchers.hasNoUndefinedReferences;
 import static org.batfish.datamodel.matchers.HopMatchers.hasNodeName;
 import static org.batfish.datamodel.matchers.TraceMatchers.hasDisposition;
 import static org.batfish.datamodel.matchers.TraceMatchers.hasLastHop;
@@ -76,6 +77,13 @@ public class AciFabricTest {
   private static Set<AbstractRoute> routes(String node, String vrf) {
     DataPlane dp = _batfish.loadDataPlane(_batfish.getSnapshot());
     return dp.getRibs().get(node, vrf).getRoutes();
+  }
+
+  @Test
+  public void testNoUndefinedReferences() {
+    assertThat(
+        _batfish.loadConvertConfigurationAnswerElementOrReparse(_batfish.getSnapshot()),
+        hasNoUndefinedReferences());
   }
 
   @Test

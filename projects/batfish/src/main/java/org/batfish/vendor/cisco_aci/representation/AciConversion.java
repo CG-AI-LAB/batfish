@@ -375,20 +375,15 @@ final class AciConversion {
   // Nodes
 
   private void initNodes() {
-    Set<String> hostnames = new HashSet<>();
     Set<Integer> pods = new TreeSet<>();
-    for (FabricNode node : _aci.getNodes().values()) {
-      if (node.getRole() != FabricNode.Role.LEAF && node.getRole() != FabricNode.Role.SPINE) {
-        continue;
-      }
+    for (Map.Entry<Integer, String> entry : _aci.getHostnames().entrySet()) {
+      FabricNode node = _aci.getNodes().get(entry.getKey());
       pods.add(node.getPodId());
-      String hostname =
-          (node.getName() != null ? node.getName() : "node-" + node.getId()).toLowerCase();
-      if (!hostnames.add(hostname)) {
-        String unique = hostname + "-" + node.getId();
-        _w.redFlagf("Duplicate node name %s; naming node %d %s", hostname, node.getId(), unique);
-        hostname = unique;
-        hostnames.add(hostname);
+      String hostname = entry.getValue();
+      String baseHostname = AciConfiguration.baseHostname(node);
+      if (!hostname.equals(baseHostname)) {
+        _w.redFlagf(
+            "Duplicate node name %s; naming node %d %s", baseHostname, node.getId(), hostname);
       }
       Ip tep = node.getTepAddress();
       if (tep == null) {

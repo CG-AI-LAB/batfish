@@ -16,6 +16,7 @@ import org.batfish.common.topology.Layer1Edge;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.references.StructureManager;
 import org.batfish.vendor.VendorConfiguration;
 
 /**
@@ -33,6 +34,7 @@ public final class AciConfiguration extends VendorConfiguration {
     _accessPolicies = new AccessPolicies();
     _lldpAdjacencies = new ArrayList<>();
     _portChannelIds = new HashMap<>();
+    _structures = new AciStructures();
   }
 
   /** The fabric's folder name under {@code aci_configs/}. */
@@ -92,6 +94,43 @@ public final class AciConfiguration extends VendorConfiguration {
     return _portChannelIds;
   }
 
+  /**
+   * Hostnames of the fabric's leaves and spines by node ID: the APIC node name in lower case, or
+   * {@code node-<id>} when unnamed. A name used by two nodes gets the node ID appended.
+   */
+  public @Nonnull SortedMap<Integer, String> getHostnames() {
+    SortedMap<Integer, String> hostnames = new TreeMap<>();
+    Set<String> used = new HashSet<>();
+    for (FabricNode node : _nodes.values()) {
+      if (node.getRole() != FabricNode.Role.LEAF && node.getRole() != FabricNode.Role.SPINE) {
+        continue;
+      }
+      String hostname = baseHostname(node);
+      if (!used.add(hostname)) {
+        hostname = hostname + "-" + node.getId();
+        used.add(hostname);
+      }
+      hostnames.put(node.getId(), hostname);
+    }
+    return hostnames;
+  }
+
+  /** The hostname of {@code node} before duplicate names are made unique. */
+  static @Nonnull String baseHostname(FabricNode node) {
+    return (node.getName() != null ? node.getName() : "node-" + node.getId()).toLowerCase();
+  }
+
+  /** Structure definitions and references, by input file. */
+  public @Nonnull AciStructures getStructures() {
+    return _structures;
+  }
+
+  /** One structure manager per input file, since a fabric spans several files. */
+  @Override
+  public @Nonnull Map<String, StructureManager> getStructureManagerByFilename() {
+    return _structures.getManagers();
+  }
+
   @Override
   public String getHostname() {
     return _fabricName;
@@ -135,6 +174,7 @@ public final class AciConfiguration extends VendorConfiguration {
   private final @Nonnull AccessPolicies _accessPolicies;
   private final @Nonnull List<LldpAdjacency> _lldpAdjacencies;
   private final @Nonnull Map<Integer, Map<String, String>> _portChannelIds;
+  private final @Nonnull AciStructures _structures;
 
   /** Conversion output; never serialized. */
   private transient @Nullable AciConversion.Result _converted;

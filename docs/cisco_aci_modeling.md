@@ -92,6 +92,25 @@ Subjects apply filters consumer-to-provider and, with `revFltPorts`, provider-to
 reversed. Stateful entries require the ACK flag on provider-to-consumer TCP. Filter `priorityOverride`
 is reported but not modeled.
 
+## Structure references
+
+`definedStructures`, `referencedStructures`, `undefinedReferences` and `unusedStructures` cover
+VRFs, bridge domains, EPGs, contracts, contract interfaces, taboo contracts, filters, L3Outs, leaf
+interface profiles, interface policy groups and attachable entity profiles. Each is named by its DN,
+such as `uni/tn-prod/BD-web-bd`, and reported against the file and lines it comes from. Line
+numbers help when files are pretty-printed, as `tools/export_aci_fabric.py` writes them; a raw APIC
+response is a single line.
+
+- A relation resolves the way APIC resolves it: to its target DN when the export has one, else to
+  the name in its own tenant, then in tenant `common`. An unresolved relation is reported under its
+  target DN, or under the DN it would have in its own tenant.
+- References resolve across the files of a fabric, so an attachable entity profile in `infra.json`
+  may deploy an EPG from `tenants.json`.
+- EPGs and L3Outs are in use whether or not anything references them, so they are never reported
+  unused. Nor are objects APIC creates itself: those of tenants `infra` and `mgmt`, and the
+  `default` objects of tenant `common`.
+- Relations to FEX and breakout policy groups, nodes and paths are not tracked.
+
 ## Limitations
 
 - Multi-Pod, Multi-Site and remote leaves are not modeled.

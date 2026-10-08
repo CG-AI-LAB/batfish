@@ -36,8 +36,13 @@ import org.batfish.vendor.cisco_aci.representation.AccessPolicies.PortSelector;
  */
 public final class AciModelExtractor {
 
-  public AciModelExtractor(AciConfiguration config, Consumer<String> warn) {
+  /**
+   * Extracts objects from {@code filename} into {@code config}, recording structure definitions and
+   * references against that file.
+   */
+  public AciModelExtractor(AciConfiguration config, String filename, Consumer<String> warn) {
     _c = config;
+    _filename = filename;
     _warn = warn;
     _warnedClasses = new HashSet<>();
   }
@@ -172,6 +177,7 @@ public final class AciModelExtractor {
       return;
     }
     AciVrf vrf = new AciVrf(tenant.getName(), name);
+    define(AciStructureType.VRF, AciStructureType.VRF.dn(tenant.getName(), name), mo);
     Long vnid = parseLongOrNull(mo.getAttribute("scope"));
     if (vnid == null || vnid == 0) {
       vnid = parseLongOrNull(mo.getAttribute("seg"));
@@ -182,10 +188,24 @@ public final class AciModelExtractor {
         .ifPresent(
             any -> {
               vrf.setPreferredGroupEnabled("enabled".equals(any.getAttribute("prefGrMemb")));
-              any.getChildren("vzRsAnyToProv")
-                  .forEach(r -> addRef(vrf.getAnyProvided(), r, "tnVzBrCPName"));
-              any.getChildren("vzRsAnyToCons")
-                  .forEach(r -> addRef(vrf.getAnyConsumed(), r, "tnVzBrCPName"));
+              for (AciMo r : any.getChildren("vzRsAnyToProv")) {
+                addRef(
+                    vrf.getAnyProvided(),
+                    r,
+                    "tnVzBrCPName",
+                    AciStructureType.CONTRACT,
+                    tenant.getName(),
+                    AciStructureUsage.VZANY_PROVIDED_CONTRACT);
+              }
+              for (AciMo r : any.getChildren("vzRsAnyToCons")) {
+                addRef(
+                    vrf.getAnyConsumed(),
+                    r,
+                    "tnVzBrCPName",
+                    AciStructureType.CONTRACT,
+                    tenant.getName(),
+                    AciStructureUsage.VZANY_CONSUMED_CONTRACT);
+              }
             });
     tenant.getVrfs().put(name, vrf);
   }
@@ -196,13 +216,22 @@ public final class AciModelExtractor {
       return;
     }
     BridgeDomain bd = new BridgeDomain(tenant.getName(), name);
+    define(AciStructureType.BRIDGE_DOMAIN, bd.getDn(), mo);
     Long vnid = parseLongOrNull(mo.getAttribute("seg"));
     bd.setVnid(vnid == null || vnid == 0 ? null : vnid);
     bd.setMulticastGroup(parseIp(mo.getAttribute("bcastP"), "bcastP of BD " + bd.getDn()));
     bd.setUnicastRoute(!"no".equals(mo.getAttribute("unicastRoute")));
     for (AciMo child : mo.getChildren()) {
       switch (child.getClassName()) {
-        case "fvRsCtx" -> bd.setVrf(toRef(child, "tnFvCtxName"));
+        case "fvRsCtx" -> {
+          bd.setVrf(toRef(child, "tnFvCtxName"));
+          referenceNamed(
+              AciStructureType.VRF,
+              tenant.getName(),
+              bd.getVrf(),
+              AciStructureUsage.BRIDGE_DOMAIN_VRF,
+              child);
+        }
         case "fvSubnet" -> {
           AciSubnet subnet = extractSubnet(child, bd.getDn());
           if (subnet != null) {
@@ -213,6 +242,12 @@ public final class AciModelExtractor {
           String l3Out = child.getAttribute("tnL3extOutName");
           if (l3Out != null) {
             bd.getL3Outs().add(l3Out);
+            referenceNamed(
+                AciStructureType.L3OUT,
+                tenant.getName(),
+                new NamedRef(l3Out, child.getAttribute("tDn")),
+                AciStructureUsage.BRIDGE_DOMAIN_L3OUT,
+                child);
           }
         }
         default -> {}
@@ -256,14 +291,23 @@ public final class AciModelExtractor {
       return;
     }
     Epg epg = new Epg(tenant.getName(), ap, name);
+    defineUsed(AciStructureType.EPG, epg.getDn(), AciStructureUsage.EPG_SELF_REF, mo);
     epg.setIntraEpgIsolation("enforced".equals(mo.getAttribute("pcEnfPref")));
     epg.setPreferredGroupMember("include".equals(mo.getAttribute("prefGrMemb")));
     for (AciMo child : mo.getChildren()) {
-      if (extractContractRelation(epg.getContracts(), child)) {
+      if (extractContractRelation(epg.getContracts(), tenant.getName(), EPG_RELATIONS, child)) {
         continue;
       }
       switch (child.getClassName()) {
-        case "fvRsBd" -> epg.setBridgeDomain(toRef(child, "tnFvBDName"));
+        case "fvRsBd" -> {
+          epg.setBridgeDomain(toRef(child, "tnFvBDName"));
+          referenceNamed(
+              AciStructureType.BRIDGE_DOMAIN,
+              tenant.getName(),
+              epg.getBridgeDomain(),
+              AciStructureUsage.EPG_BRIDGE_DOMAIN,
+              child);
+        }
         case "fvRsPathAtt" -> {
           PathRef path = PathRef.parse(child.getAttribute("tDn"));
           if (path == null) {
@@ -324,11 +368,19 @@ public final class AciModelExtractor {
     Esg esg = new Esg(tenant.getName(), ap, name);
     esg.setPreferredGroupMember("include".equals(mo.getAttribute("prefGrMemb")));
     for (AciMo child : mo.getChildren()) {
-      if (extractContractRelation(esg.getContracts(), child)) {
+      if (extractContractRelation(esg.getContracts(), tenant.getName(), ESG_RELATIONS, child)) {
         continue;
       }
       switch (child.getClassName()) {
-        case "fvRsScope" -> esg.setVrf(toRef(child, "tnFvCtxName"));
+        case "fvRsScope" -> {
+          esg.setVrf(toRef(child, "tnFvCtxName"));
+          referenceNamed(
+              AciStructureType.VRF,
+              tenant.getName(),
+              esg.getVrf(),
+              AciStructureUsage.ESG_VRF,
+              child);
+        }
         case "fvEPSelector" -> {
           String expression = child.getAttribute("matchExpression");
           Prefix prefix = expression == null ? null : parseIpSelector(expression);
@@ -344,6 +396,7 @@ public final class AciModelExtractor {
           String epgDn = child.getAttribute("matchEpgDn");
           if (epgDn != null) {
             esg.getEpgSelectors().add(epgDn);
+            referenceDn(AciStructureType.EPG, epgDn, AciStructureUsage.ESG_EPG_SELECTOR, child);
           }
         }
         default -> {}
@@ -367,13 +420,71 @@ public final class AciModelExtractor {
     }
   }
 
-  /** Extracts a contract relation of an EPG, ESG or external EPG. Returns false if not one. */
-  private boolean extractContractRelation(ContractRelations relations, AciMo child) {
+  /** Structure usages of the contract relations of one kind of object. */
+  private record RelationUsages(
+      AciStructureUsage provided,
+      AciStructureUsage consumed,
+      AciStructureUsage consumedInterface,
+      AciStructureUsage taboo) {}
+
+  private static final RelationUsages EPG_RELATIONS =
+      new RelationUsages(
+          AciStructureUsage.EPG_PROVIDED_CONTRACT,
+          AciStructureUsage.EPG_CONSUMED_CONTRACT,
+          AciStructureUsage.EPG_CONSUMED_CONTRACT_INTERFACE,
+          AciStructureUsage.EPG_TABOO_CONTRACT);
+  private static final RelationUsages ESG_RELATIONS =
+      new RelationUsages(
+          AciStructureUsage.ESG_PROVIDED_CONTRACT,
+          AciStructureUsage.ESG_CONSUMED_CONTRACT,
+          AciStructureUsage.ESG_CONSUMED_CONTRACT_INTERFACE,
+          AciStructureUsage.ESG_TABOO_CONTRACT);
+  private static final RelationUsages EXTERNAL_EPG_RELATIONS =
+      new RelationUsages(
+          AciStructureUsage.EXTERNAL_EPG_PROVIDED_CONTRACT,
+          AciStructureUsage.EXTERNAL_EPG_CONSUMED_CONTRACT,
+          AciStructureUsage.EXTERNAL_EPG_CONSUMED_CONTRACT_INTERFACE,
+          AciStructureUsage.EXTERNAL_EPG_TABOO_CONTRACT);
+
+  /**
+   * Extracts a contract relation of an EPG, ESG or external EPG in {@code tenant}. Returns false if
+   * {@code child} is not one.
+   */
+  private boolean extractContractRelation(
+      ContractRelations relations, String tenant, RelationUsages usages, AciMo child) {
     switch (child.getClassName()) {
-      case "fvRsProv" -> addRef(relations.getProvided(), child, "tnVzBrCPName");
-      case "fvRsCons" -> addRef(relations.getConsumed(), child, "tnVzBrCPName");
-      case "fvRsConsIf" -> addRef(relations.getConsumedInterfaces(), child, "tnVzCPIfName");
-      case "fvRsProtBy" -> addRef(relations.getTaboos(), child, "tnVzTabooName");
+      case "fvRsProv" ->
+          addRef(
+              relations.getProvided(),
+              child,
+              "tnVzBrCPName",
+              AciStructureType.CONTRACT,
+              tenant,
+              usages.provided());
+      case "fvRsCons" ->
+          addRef(
+              relations.getConsumed(),
+              child,
+              "tnVzBrCPName",
+              AciStructureType.CONTRACT,
+              tenant,
+              usages.consumed());
+      case "fvRsConsIf" ->
+          addRef(
+              relations.getConsumedInterfaces(),
+              child,
+              "tnVzCPIfName",
+              AciStructureType.CONTRACT_INTERFACE,
+              tenant,
+              usages.consumedInterface());
+      case "fvRsProtBy" ->
+          addRef(
+              relations.getTaboos(),
+              child,
+              "tnVzTabooName",
+              AciStructureType.TABOO_CONTRACT,
+              tenant,
+              usages.taboo());
       default -> {
         return false;
       }
@@ -451,6 +562,7 @@ public final class AciModelExtractor {
       return;
     }
     Contract contract = new Contract(tenant.getName(), name);
+    define(AciStructureType.CONTRACT, contract.getDn(), mo);
     contract.setScope(Contract.Scope.fromString(mo.getAttribute("scope")));
     for (AciMo subjectMo : mo.getChildren("vzSubj")) {
       String subjectName = subjectMo.getAttribute("name", "");
@@ -458,15 +570,32 @@ public final class AciModelExtractor {
       subject.setReverseFilterPorts(!"no".equals(subjectMo.getAttribute("revFltPorts")));
       for (AciMo child : subjectMo.getChildren()) {
         switch (child.getClassName()) {
-          case "vzRsSubjFiltAtt" -> addFilterRef(subject.getFilters(), child);
+          case "vzRsSubjFiltAtt" ->
+              addFilterRef(
+                  subject.getFilters(),
+                  tenant.getName(),
+                  AciStructureUsage.CONTRACT_SUBJECT_FILTER,
+                  child);
           case "vzInTerm" ->
               child
                   .getChildren("vzRsFiltAtt")
-                  .forEach(f -> addFilterRef(subject.getConsumerToProviderFilters(), f));
+                  .forEach(
+                      f ->
+                          addFilterRef(
+                              subject.getConsumerToProviderFilters(),
+                              tenant.getName(),
+                              AciStructureUsage.CONTRACT_SUBJECT_TERM_FILTER,
+                              f));
           case "vzOutTerm" ->
               child
                   .getChildren("vzRsFiltAtt")
-                  .forEach(f -> addFilterRef(subject.getProviderToConsumerFilters(), f));
+                  .forEach(
+                      f ->
+                          addFilterRef(
+                              subject.getProviderToConsumerFilters(),
+                              tenant.getName(),
+                              AciStructureUsage.CONTRACT_SUBJECT_TERM_FILTER,
+                              f));
           default -> {}
         }
       }
@@ -475,8 +604,10 @@ public final class AciModelExtractor {
     tenant.getContracts().put(name, contract);
   }
 
-  private void addFilterRef(List<FilterRef> refs, AciMo mo) {
+  private void addFilterRef(
+      List<FilterRef> refs, String tenant, AciStructureUsage usage, AciMo mo) {
     NamedRef filter = toRef(mo, "tnVzFilterName");
+    referenceNamed(AciStructureType.FILTER, tenant, filter, usage, mo);
     LineAction action =
         "deny".equals(mo.getAttribute("action")) ? LineAction.DENY : LineAction.PERMIT;
     refs.add(new FilterRef(filter, action, mo.getAttribute("priorityOverride", "default")));
@@ -488,6 +619,7 @@ public final class AciModelExtractor {
       return;
     }
     AciFilter filter = new AciFilter(tenant.getName(), name);
+    define(AciStructureType.FILTER, filter.getDn(), mo);
     for (AciMo entryMo : mo.getChildren("vzEntry")) {
       filter.getEntries().add(extractFilterEntry(entryMo, filter.getDn()));
     }
@@ -540,9 +672,17 @@ public final class AciModelExtractor {
       return;
     }
     TabooContract taboo = new TabooContract(tenant.getName(), name);
+    define(AciStructureType.TABOO_CONTRACT, taboo.getDn(), mo);
     for (AciMo subject : mo.getChildren("vzTSubj")) {
       for (AciMo deny : subject.getChildren("vzRsDenyRule")) {
-        taboo.getDenyFilters().add(toRef(deny, "tnVzFilterName"));
+        NamedRef filter = toRef(deny, "tnVzFilterName");
+        taboo.getDenyFilters().add(filter);
+        referenceNamed(
+            AciStructureType.FILTER,
+            tenant.getName(),
+            filter,
+            AciStructureUsage.TABOO_SUBJECT_FILTER,
+            deny);
       }
     }
     tenant.getTaboos().put(name, taboo);
@@ -553,9 +693,20 @@ public final class AciModelExtractor {
     if (name == null) {
       return;
     }
+    define(
+        AciStructureType.CONTRACT_INTERFACE,
+        AciStructureType.CONTRACT_INTERFACE.dn(tenant.getName(), name),
+        mo);
     mo.getChild("vzRsIf")
-        .map(r -> r.getAttribute("tDn"))
-        .ifPresent(tDn -> tenant.getContractInterfaces().put(name, tDn));
+        .ifPresent(
+            r -> {
+              String tDn = r.getAttribute("tDn");
+              if (tDn != null) {
+                tenant.getContractInterfaces().put(name, tDn);
+              }
+              referenceDn(
+                  AciStructureType.CONTRACT, tDn, AciStructureUsage.CONTRACT_INTERFACE_CONTRACT, r);
+            });
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -567,10 +718,19 @@ public final class AciModelExtractor {
       return;
     }
     L3Out l3Out = new L3Out(tenant.getName(), name);
+    defineUsed(AciStructureType.L3OUT, l3Out.getDn(), AciStructureUsage.L3OUT_SELF_REF, mo);
     l3Out.setEnforceImportRouteControl(flags(mo.getAttribute("enforceRtctrl")).contains("import"));
     for (AciMo child : mo.getChildren()) {
       switch (child.getClassName()) {
-        case "l3extRsEctx" -> l3Out.setVrf(toRef(child, "tnFvCtxName"));
+        case "l3extRsEctx" -> {
+          l3Out.setVrf(toRef(child, "tnFvCtxName"));
+          referenceNamed(
+              AciStructureType.VRF,
+              tenant.getName(),
+              l3Out.getVrf(),
+              AciStructureUsage.L3OUT_VRF,
+              child);
+        }
         case "bgpExtP" -> l3Out.setBgpEnabled(true);
         case "ospfExtP" -> {
           l3Out.setOspfAreaId(parseOspfArea(child.getAttribute("areaId", "1")));
@@ -776,7 +936,7 @@ public final class AciModelExtractor {
     ExternalEpg epg = new ExternalEpg(tenant, l3Out, mo.getAttribute("name", ""));
     epg.setPreferredGroupMember("include".equals(mo.getAttribute("prefGrMemb")));
     for (AciMo child : mo.getChildren()) {
-      if (extractContractRelation(epg.getContracts(), child)) {
+      if (extractContractRelation(epg.getContracts(), tenant, EXTERNAL_EPG_RELATIONS, child)) {
         continue;
       }
       if (child.getClassName().equals("l3extSubnet")) {
@@ -827,6 +987,11 @@ public final class AciModelExtractor {
           String tDn = child.getAttribute("tDn");
           if (tDn != null) {
             profile.getInterfaceProfileDns().add(tDn);
+            referenceDn(
+                AciStructureType.INTERFACE_PROFILE,
+                tDn,
+                AciStructureUsage.LEAF_PROFILE_INTERFACE_PROFILE,
+                child);
           }
         }
         default -> {}
@@ -841,10 +1006,19 @@ public final class AciModelExtractor {
       return;
     }
     String dn = "uni/infra/accportprof-" + name;
+    define(AciStructureType.INTERFACE_PROFILE, dn, mo);
     List<PortSelector> selectors = new ArrayList<>();
     for (AciMo selectorMo : mo.getChildren("infraHPortS")) {
-      String policyGroup =
-          selectorMo.getChild("infraRsAccBaseGrp").map(r -> r.getAttribute("tDn")).orElse(null);
+      AciMo groupRelation = selectorMo.getChild("infraRsAccBaseGrp").orElse(null);
+      String policyGroup = groupRelation == null ? null : groupRelation.getAttribute("tDn");
+      if (policyGroup != null && isLeafPolicyGroupDn(policyGroup)) {
+        // FEX and breakout policy groups are not modeled, so references to them are not tracked
+        referenceDn(
+            AciStructureType.INTERFACE_POLICY_GROUP,
+            policyGroup,
+            AciStructureUsage.PORT_SELECTOR_POLICY_GROUP,
+            groupRelation);
+      }
       PortSelector selector = new PortSelector(selectorMo.getAttribute("name", ""), policyGroup);
       if ("ALL".equals(selectorMo.getAttribute("type"))) {
         _warn.accept(
@@ -868,6 +1042,14 @@ public final class AciModelExtractor {
     policies.getInterfaceProfiles().put(dn, selectors);
   }
 
+  private static final String ACCESS_PORT_GROUP_PREFIX = "uni/infra/funcprof/accportgrp-";
+  private static final String BUNDLE_GROUP_PREFIX = "uni/infra/funcprof/accbundle-";
+
+  /** Whether {@code dn} names a leaf access port, port-channel or vPC policy group. */
+  private static boolean isLeafPolicyGroupDn(String dn) {
+    return dn.startsWith(ACCESS_PORT_GROUP_PREFIX) || dn.startsWith(BUNDLE_GROUP_PREFIX);
+  }
+
   private static int intAttr(AciMo mo, String name, int defaultValue) {
     Integer value = parseIntOrNull(mo.getAttribute(name));
     return value == null ? defaultValue : value;
@@ -879,22 +1061,31 @@ public final class AciModelExtractor {
       if (name == null) {
         continue;
       }
-      String aaep = child.getChild("infraRsAttEntP").map(r -> r.getAttribute("tDn")).orElse(null);
+      AciMo aaepRelation = child.getChild("infraRsAttEntP").orElse(null);
+      String aaep = aaepRelation == null ? null : aaepRelation.getAttribute("tDn");
+      String dn;
       switch (child.getClassName()) {
-        case "infraAccPortGrp" ->
-            policies
-                .getPolicyGroups()
-                .put(
-                    "uni/infra/funcprof/accportgrp-" + name,
-                    new PolicyGroup(name, BundleType.NONE, aaep));
+        case "infraAccPortGrp" -> {
+          dn = ACCESS_PORT_GROUP_PREFIX + name;
+          policies.getPolicyGroups().put(dn, new PolicyGroup(name, BundleType.NONE, aaep));
+        }
         case "infraAccBndlGrp" -> {
           BundleType type =
               "node".equals(child.getAttribute("lagT")) ? BundleType.VPC : BundleType.PORT_CHANNEL;
-          policies
-              .getPolicyGroups()
-              .put("uni/infra/funcprof/accbundle-" + name, new PolicyGroup(name, type, aaep));
+          dn = BUNDLE_GROUP_PREFIX + name;
+          policies.getPolicyGroups().put(dn, new PolicyGroup(name, type, aaep));
         }
-        default -> {}
+        default -> {
+          continue;
+        }
+      }
+      define(AciStructureType.INTERFACE_POLICY_GROUP, dn, child);
+      if (aaepRelation != null) {
+        referenceDn(
+            AciStructureType.ATTACHABLE_ENTITY_PROFILE,
+            aaep,
+            AciStructureUsage.INTERFACE_POLICY_GROUP_AAEP,
+            aaepRelation);
       }
     }
   }
@@ -904,11 +1095,14 @@ public final class AciModelExtractor {
     if (name == null) {
       return;
     }
+    String dn = "uni/infra/attentp-" + name;
+    define(AciStructureType.ATTACHABLE_ENTITY_PROFILE, dn, mo);
     List<AaepEpgBinding> bindings = new ArrayList<>();
     for (AciMo generic : mo.getChildren("infraGeneric")) {
       for (AciMo binding : generic.getChildren("infraRsFuncToEpg")) {
         String epgDn = binding.getAttribute("tDn");
         if (epgDn != null) {
+          referenceDn(AciStructureType.EPG, epgDn, AciStructureUsage.AAEP_EPG, binding);
           bindings.add(
               new AaepEpgBinding(
                   epgDn,
@@ -917,7 +1111,7 @@ public final class AciModelExtractor {
         }
       }
     }
-    policies.getAaepBindings().put("uni/infra/attentp-" + name, bindings);
+    policies.getAaepBindings().put(dn, bindings);
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -1074,8 +1268,58 @@ public final class AciModelExtractor {
     return new NamedRef(mo.getAttribute(nameAttribute, ""), mo.getAttribute("tDn"));
   }
 
-  private static void addRef(List<NamedRef> refs, AciMo mo, String nameAttribute) {
-    refs.add(toRef(mo, nameAttribute));
+  /** Adds the named relation {@code mo} of an object in {@code tenant} to {@code refs}. */
+  private void addRef(
+      List<NamedRef> refs,
+      AciMo mo,
+      String nameAttribute,
+      AciStructureType type,
+      String tenant,
+      AciStructureUsage usage) {
+    NamedRef ref = toRef(mo, nameAttribute);
+    refs.add(ref);
+    referenceNamed(type, tenant, ref, usage, mo);
+  }
+
+  /**
+   * Records that {@code mo} defines the structure {@code dn}. Objects APIC creates itself are
+   * marked referenced, so they are not reported as unused.
+   */
+  private void define(AciStructureType type, String dn, AciMo mo) {
+    _c.getStructures().define(_filename, type, dn, mo);
+    if (isSystemObject(type, dn)) {
+      _c.getStructures().referenceDn(_filename, type, dn, AciStructureUsage.SYSTEM_OBJECT, mo);
+    }
+  }
+
+  /**
+   * Records that {@code mo} defines {@code dn}, which is in use whether or not it is referenced.
+   */
+  private void defineUsed(AciStructureType type, String dn, AciStructureUsage selfRef, AciMo mo) {
+    _c.getStructures().define(_filename, type, dn, mo);
+    _c.getStructures().referenceDn(_filename, type, dn, selfRef, mo);
+  }
+
+  /** Records a named relation {@code mo} of an object in {@code tenant}. */
+  private void referenceNamed(
+      AciStructureType type, String tenant, NamedRef ref, AciStructureUsage usage, AciMo mo) {
+    _c.getStructures().referenceNamed(_filename, type, tenant, ref, usage, mo);
+  }
+
+  /** Records a relation {@code mo} to the object with DN {@code dn}, if any. */
+  private void referenceDn(
+      AciStructureType type, @Nullable String dn, AciStructureUsage usage, AciMo mo) {
+    if (dn != null) {
+      _c.getStructures().referenceDn(_filename, type, dn, usage, mo);
+    }
+  }
+
+  /** Objects APIC creates itself: those of tenants infra and mgmt, and the defaults in common. */
+  @VisibleForTesting
+  static boolean isSystemObject(AciStructureType type, String dn) {
+    return dn.startsWith("uni/tn-infra/")
+        || dn.startsWith("uni/tn-mgmt/")
+        || (type.getTenantRnPrefix() != null && dn.equals(type.dn(Tenant.COMMON, "default")));
   }
 
   /** Splits a comma-separated APIC bitmask attribute. */
@@ -1171,6 +1415,7 @@ public final class AciModelExtractor {
           "echo-rep", 0, "dst-unreach", 3, "src-quench", 4, "echo", 8, "time-exceeded", 11);
 
   private final @Nonnull AciConfiguration _c;
+  private final @Nonnull String _filename;
   private final @Nonnull Consumer<String> _warn;
   private final @Nonnull Set<String> _warnedClasses;
 }
