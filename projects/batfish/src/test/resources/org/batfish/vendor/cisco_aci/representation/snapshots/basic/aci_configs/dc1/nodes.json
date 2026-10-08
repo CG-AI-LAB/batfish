@@ -1,0 +1,71 @@
+{
+  "totalCount": "6",
+  "imdata": [
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-1",
+          "id": "1",
+          "name": "apic1",
+          "role": "controller",
+          "address": "10.0.0.1"
+        }
+      }
+    },
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-101",
+          "id": "101",
+          "name": "leaf-101",
+          "role": "leaf",
+          "address": "10.0.32.64"
+        }
+      }
+    },
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-102",
+          "id": "102",
+          "name": "leaf-102",
+          "role": "leaf",
+          "address": "10.0.32.65"
+        }
+      }
+    },
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-103",
+          "id": "103",
+          "name": "leaf-103",
+          "role": "leaf",
+          "address": "10.0.32.66"
+        }
+      }
+    },
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-201",
+          "id": "201",
+          "name": "spine-201",
+          "role": "spine",
+          "address": "10.0.32.70"
+        }
+      }
+    },
+    {
+      "fabricNode": {
+        "attributes": {
+          "dn": "topology/pod-1/node-202",
+          "id": "202",
+          "name": "spine-202",
+          "role": "spine",
+          "address": "10.0.32.71"
+        }
+      }
+    }
+  ]
+}

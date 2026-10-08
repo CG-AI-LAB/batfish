@@ -1,0 +1,86 @@
+{
+  "totalCount": "3",
+  "imdata": [
+    {
+      "fvCEp": {
+        "attributes": {
+          "dn": "uni/tn-prod/ap-shop/epg-web/cep-00:50:56:00:01:01",
+          "mac": "00:50:56:00:01:01",
+          "name": "00:50:56:00:01:01",
+          "ip": "10.1.1.10",
+          "encap": "vlan-100"
+        },
+        "children": [
+          {
+            "fvIp": {
+              "attributes": {
+                "addr": "10.1.1.10"
+              }
+            }
+          },
+          {
+            "fvRsCEpToPathEp": {
+              "attributes": {
+                "tDn": "topology/pod-1/paths-101/pathep-[eth1/1]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fvCEp": {
+        "attributes": {
+          "dn": "uni/tn-prod/ap-shop/epg-app/cep-00:50:56:00:02:01",
+          "mac": "00:50:56:00:02:01",
+          "name": "00:50:56:00:02:01",
+          "ip": "10.1.2.10",
+          "encap": "vlan-200"
+        },
+        "children": [
+          {
+            "fvIp": {
+              "attributes": {
+                "addr": "10.1.2.10"
+              }
+            }
+          },
+          {
+            "fvRsCEpToPathEp": {
+              "attributes": {
+                "tDn": "topology/pod-1/paths-102/pathep-[eth1/2]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fvCEp": {
+        "attributes": {
+          "dn": "uni/tn-prod/ap-shop/epg-db/cep-00:50:56:00:03:01",
+          "mac": "00:50:56:00:03:01",
+          "name": "00:50:56:00:03:01",
+          "ip": "10.1.3.10",
+          "encap": "vlan-300"
+        },
+        "children": [
+          {
+            "fvIp": {
+              "attributes": {
+                "addr": "10.1.3.10"
+              }
+            }
+          },
+          {
+            "fvRsCEpToPathEp": {
+              "attributes": {
+                "tDn": "topology/pod-1/protpaths-101-102/pathep-[db-vpc]"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

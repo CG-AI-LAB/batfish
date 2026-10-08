@@ -1,5 +1,6 @@
 package org.batfish.main;
 
+import static org.batfish.common.BfConsts.RELPATH_ACI_CONFIGS_DIR;
 import static org.batfish.common.BfConsts.RELPATH_AWS_CONFIGS_DIR;
 import static org.batfish.common.BfConsts.RELPATH_AZURE_CONFIGS_DIR;
 import static org.batfish.common.BfConsts.RELPATH_CHECKPOINT_MANAGEMENT_DIR;
@@ -212,6 +213,7 @@ public class BatfishTestUtils {
    */
   public static Batfish getBatfishFromTestrigText(TestrigText testrigText, Path tempFolder)
       throws IOException {
+    Map<String, byte[]> aciBytes = testrigText.getAciBytes();
     Map<String, byte[]> awsBytes = testrigText.getAwsBytes();
     Map<String, byte[]> azureBytes = testrigText.getAzureBytes();
     Map<String, byte[]> bgpTablesBytes = testrigText.getBgpTablesBytes();
@@ -249,6 +251,8 @@ public class BatfishTestUtils {
         awsBytes, RELPATH_AWS_CONFIGS_DIR, storage, batfish.getSnapshot());
     writeTemporarySnapshotInputFiles(
         azureBytes, RELPATH_AZURE_CONFIGS_DIR, storage, batfish.getSnapshot());
+    writeTemporarySnapshotInputFiles(
+        aciBytes, RELPATH_ACI_CONFIGS_DIR, storage, batfish.getSnapshot());
     writeTemporarySnapshotInputFiles(
         bgpTablesBytes, RELPATH_ENVIRONMENT_BGP_TABLES, storage, batfish.getSnapshot());
     if (externalBgpAnnouncementsBytes != null) {

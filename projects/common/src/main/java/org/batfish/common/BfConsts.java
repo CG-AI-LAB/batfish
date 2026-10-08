@@ -118,6 +118,7 @@ public class BfConsts {
   public static final String PROP_VALUES = "values";
   public static final String PROP_VARIABLES = "variables";
 
+  public static final String RELPATH_ACI_CONFIGS_DIR = "aci_configs";
   public static final String RELPATH_AWS_CONFIGS_DIR = "aws_configs";
   public static final String RELPATH_AZURE_CONFIGS_DIR = "azure_configs";
   public static final String RELPATH_AWS_CONFIGS_FILE = "aws_configs";

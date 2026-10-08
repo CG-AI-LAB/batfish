@@ -129,6 +129,7 @@ After processing configurations, Batfish performs analysis:
 **[Quick Reference](quick_reference.md)** ⭐ NEW - Common commands and patterns
 **[AWS Network Modeling](aws_network_modeling.md)** - AWS-specific details
 **[Azure](azure/)** - Azure-specific documentation
+**[Cisco ACI Modeling](cisco_aci_modeling.md)** - Modeling ACI fabrics from APIC exports
 
 ---
 
